@@ -10,7 +10,27 @@ The official [draw.io](https://www.draw.io) MCP (Model Context Protocol) server 
 - **URL support**: Fetch content from URLs automatically
 - **Customizable display**: Lightbox mode, dark mode, and more
 
-## Installation
+## Two Ways to Use
+
+### Option 1: MCP Server (Claude Desktop)
+
+Install and configure the MCP server for Claude Desktop. The server runs locally and can automatically open diagrams in your browser.
+
+### Option 2: Project Instructions (No MCP)
+
+Use draw.io diagram generation with custom project instructions - works in both Claude.ai and Claude Desktop without installing the MCP server. See [Using Project Instructions](#using-project-instructions-no-mcp) below.
+
+| Feature | MCP Server | Project Instructions |
+|---------|------------|----------------------|
+| Platform | Claude Desktop | Claude.ai & Claude Desktop |
+| Installation | Required | None |
+| System access | Opens browser automatically | No system access |
+| Link verification | Automatic | User can inspect link before clicking |
+| Complexity | More setup | Just paste instructions |
+
+---
+
+## MCP Server Installation
 
 ### Using npx (recommended)
 
@@ -276,6 +296,44 @@ npm install
 # Run the server
 npm start
 ```
+
+---
+
+## Using Project Instructions (No MCP)
+
+You can use draw.io diagram generation without installing the MCP server by using custom project instructions. This works in both Claude.ai (web) and Claude Desktop.
+
+**Advantages:**
+
+- **No installation** - Just paste instructions into a project
+- **Works everywhere** - Claude.ai and Claude Desktop
+- **No system access** - Claude generates a link without accessing your computer
+- **Transparent** - You can inspect the generated URL before clicking
+- **Verifiable** - The link visibly points to `app.diagrams.net`
+
+### Setup
+
+1. Create a new Project in Claude.ai or Claude Desktop
+2. In Project Settings, paste the contents of [`claude-project-instructions.txt`](./claude-project-instructions.txt) into the custom instructions
+3. Start a conversation and ask Claude to create diagrams
+
+### How It Works
+
+Claude uses its built-in Python analysis tool to:
+1. Generate Mermaid/CSV/XML diagram code based on your request
+2. Compress and encode the diagram data
+3. Create a draw.io URL with the embedded diagram
+4. Present the URL as a clickable link
+
+### Example
+
+**You:** Create a flowchart for a user login process
+
+**Claude:** Here's your flowchart:
+
+👉 [Open in draw.io](https://app.diagrams.net/?pv=0&grid=0#create=...)
+
+---
 
 ## Related Resources
 
