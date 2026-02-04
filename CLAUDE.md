@@ -24,8 +24,6 @@ The `claude-project-instructions.txt` file contains instructions that can be pas
 - No system access needed
 - User can inspect the URL before clicking
 
-## MCP Server
-
 ## MCP Server Tools
 
 ### `open_drawio_xml`
@@ -54,33 +52,26 @@ Opens the draw.io editor with XML content.
 
 Opens the draw.io editor with CSV data that gets converted to a diagram.
 
+**⚠️ Note:** CSV relies on draw.io's server-side processing and may occasionally fail or be unavailable. Consider using Mermaid for org charts when possible.
+
 **Parameters:**
 - `content` (required): CSV content or URL to CSV file
 - `lightbox` (optional): Open in read-only lightbox mode (default: false)
 - `dark` (optional): Dark mode - "true" or "false" (default: false)
 
-**Example CSV (Org Chart):**
+**Example CSV (Simple Org Chart):**
 ```csv
-## Example org chart
-# label: %name%<br><i style="color:gray;">%title%</i>
-# style: label;image=%image%;whiteSpace=wrap;html=1;rounded=1;
-# parentstyle: swimlane;whiteSpace=wrap;html=1;childLayout=stackLayout;horizontal=1;
-# namespace: csvimport-
-# connect: {"from":"manager","to":"name","invert":true,"style":"curved=1;endArrow=blockThin;endFill=1;"}
-# width: auto
-# height: auto
-# padding: 15
-# ignore: id,image
-# nodespacing: 40
-# levelspacing: 100
-# edgespacing: 40
+# label: %name%
+# style: whiteSpace=wrap;html=1;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;
+# connect: {"from":"manager","to":"name","invert":true,"style":"endArrow=blockThin;endFill=1;"}
 # layout: auto
-## CSV data starts below this line
-name,title,manager,image
-Evan Miller,CEO,,https://cdn-icons-png.flaticon.com/512/3135/3135715.png
-Emily Brown,VP Sales,Evan Miller,https://cdn-icons-png.flaticon.com/512/3135/3135789.png
-Daniel Lee,VP Engineering,Evan Miller,https://cdn-icons-png.flaticon.com/512/3135/3135715.png
+name,manager
+CEO,
+CTO,CEO
+CFO,CEO
 ```
+
+**⚠️ Avoid** using `%column%` placeholders in style attributes (like `fillColor=%color%`) - this can cause "URI malformed" errors.
 
 ### `open_drawio_mermaid`
 
@@ -91,13 +82,47 @@ Opens the draw.io editor with a Mermaid.js diagram definition.
 - `lightbox` (optional): Open in read-only lightbox mode (default: false)
 - `dark` (optional): Dark mode - "true" or "false" (default: false)
 
-**Example Mermaid:**
+**Example - Flowchart:**
 ```
 graph TD
     A[Start] --> B{Is it working?}
     B -->|Yes| C[Great!]
     B -->|No| D[Debug]
     D --> B
+```
+
+**Example - Sequence diagram with alt/else:**
+```
+sequenceDiagram
+    autonumber
+    participant Client
+    participant API
+    participant Database
+
+    Client->>API: POST /login
+    API->>Database: Query user
+    Database-->>API: User data
+
+    alt Valid credentials
+        API-->>Client: 200 OK + Token
+    else Invalid credentials
+        API-->>Client: 401 Unauthorized
+    end
+```
+
+**Example - ER diagram:**
+```
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER {
+        string name
+        int id PK
+    }
+    ORDER {
+        int id PK
+        int customer_id FK
+    }
 ```
 
 **Supported Mermaid diagram types:**
@@ -110,15 +135,25 @@ graph TD
 - Pie charts (`pie`)
 - And more...
 
+## Quick Decision Guide
+
+| Need | Use | Reliability |
+|------|-----|-------------|
+| Flowchart, sequence, ER diagram | `open_drawio_mermaid` | ✅ High |
+| Custom styling, precise positioning | `open_drawio_xml` | ✅ High |
+| Org chart from data | `open_drawio_csv` | ⚠️ Medium |
+
+**Default to Mermaid** - it handles most diagram types reliably.
+
 ## Usage Patterns
 
 ### Creating a New Diagram
 
 When an LLM needs to create a diagram, it should:
 
-1. **For structured data** (org charts, tables): Use `open_drawio_csv`
-2. **For flowcharts and sequences**: Use `open_drawio_mermaid`
-3. **For complex or custom diagrams**: Use `open_drawio_xml`
+1. **For flowcharts and sequences**: Use `open_drawio_mermaid` (recommended)
+2. **For complex or custom diagrams**: Use `open_drawio_xml`
+3. **For structured data** (org charts, tables): Use `open_drawio_csv` (less reliable)
 
 ### Viewing Existing Diagrams
 
@@ -153,12 +188,23 @@ The server generates draw.io URLs using the `#create` hash parameter:
 
 ## Best Practices for LLMs
 
-1. **Choose the right format**: Mermaid is easiest for simple flowcharts; CSV for data-driven diagrams; XML for precise control
+1. **Default to Mermaid**: It handles flowcharts, sequences, ER diagrams, Gantt charts, and more - all reliably
 
-2. **Keep it simple**: Start with Mermaid for most diagram needs
+2. **Use XML for precision**: When you need exact positioning, custom colors, or complex layouts
 
-3. **Validate syntax**: Ensure Mermaid/CSV/XML syntax is correct before sending
+3. **Avoid CSV for critical diagrams**: CSV processing can fail; prefer Mermaid for org charts when possible
 
-4. **Use URLs for large content**: For very large diagrams, consider hosting the content and passing a URL
+4. **Validate syntax**: Ensure Mermaid/CSV/XML syntax is correct before sending
 
-5. **Return the URL to users**: Always provide the generated URL so users can open the diagram in their browser
+5. **Use URLs for large content**: For very large diagrams, consider hosting the content and passing a URL
+
+6. **Return the URL to users**: Always provide the generated URL so users can open the diagram in their browser
+
+## Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "URI malformed" | Special characters in CSV style attributes | Use hardcoded colors instead of `%column%` placeholders |
+| "Service nicht verfügbar" | draw.io CSV server unavailable | Retry later or use Mermaid instead |
+| Blank diagram | Invalid Mermaid/XML syntax | Check syntax, ensure proper escaping |
+| Diagram doesn't match expected | Mermaid version differences | Simplify syntax, avoid edge cases |
