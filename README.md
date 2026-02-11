@@ -2,7 +2,27 @@
 
 The official [draw.io](https://www.draw.io) MCP (Model Context Protocol) server that enables LLMs to create and open diagrams in the draw.io editor.
 
-## Features
+## Three Ways to Create Diagrams
+
+This repository offers three approaches for integrating draw.io with AI assistants. Pick the one that fits your setup:
+
+| | [MCP Tool Server](#mcp-tool-server) | [MCP App Server](#mcp-app-server) | [Project Instructions](#alternative-project-instructions-no-mcp-required) |
+|---|---|---|---|
+| **How it works** | Opens diagrams in your browser | Renders diagrams inline in chat | Claude generates draw.io URLs via Python |
+| **Diagram output** | draw.io editor in a new tab | Interactive viewer embedded in conversation | Clickable link to draw.io |
+| **Requires installation** | Yes (npm package) | Yes (Node.js server + tunnel) | No — just paste instructions |
+| **Supports XML, CSV, Mermaid** | ✅ All three | XML only | ✅ All three |
+| **Editable in draw.io** | ✅ Directly | Via "Open in draw.io" button | Via link |
+| **Works with** | Claude Desktop, any MCP client | Claude.ai, VS Code, any MCP Apps host | Claude.ai (with Projects) |
+| **Best for** | Local desktop workflows | Inline previews in chat | Quick setup, no install needed |
+
+---
+
+## MCP Tool Server
+
+The original MCP server that opens diagrams directly in the draw.io editor.
+
+### Features
 
 - **Open XML diagrams**: Load native draw.io/mxGraph XML format
 - **Import CSV data**: Convert tabular data to diagrams (org charts, flowcharts, etc.)
@@ -10,33 +30,33 @@ The official [draw.io](https://www.draw.io) MCP (Model Context Protocol) server 
 - **URL support**: Fetch content from URLs automatically
 - **Customizable display**: Lightbox mode, dark mode, and more
 
-## Installation
+### Installation
 
-### Using npx (recommended)
+#### Using npx (recommended)
 
 ```bash
 npx @drawio/mcp
 ```
 
-### Global installation
+#### Global installation
 
 ```bash
 npm install -g @drawio/mcp
 drawio-mcp
 ```
 
-### From source
+#### From source
 
 ```bash
 git clone https://github.com/jgraph/drawio-mcp.git
-cd drawio-mcp
+cd drawio-mcp/mcp-tool-server
 npm install
 npm start
 ```
 
-## Configuration
+### Configuration
 
-### Claude Desktop
+#### Claude Desktop
 
 Add to your Claude Desktop configuration file:
 
@@ -54,7 +74,7 @@ Add to your Claude Desktop configuration file:
 }
 ```
 
-### Other MCP Clients
+#### Other MCP Clients
 
 Configure your MCP client to run the server via stdio:
 
@@ -62,9 +82,9 @@ Configure your MCP client to run the server via stdio:
 npx @drawio/mcp
 ```
 
-## Tools
+### Tools
 
-### `open_drawio_xml`
+#### `open_drawio_xml`
 
 Opens the draw.io editor with XML content.
 
@@ -74,7 +94,7 @@ Opens the draw.io editor with XML content.
 | `lightbox` | boolean | No | Read-only view mode (default: false) |
 | `dark` | string | No | "auto", "true", or "false" (default: "auto") |
 
-### `open_drawio_csv`
+#### `open_drawio_csv`
 
 Opens the draw.io editor with CSV data converted to a diagram.
 
@@ -84,7 +104,7 @@ Opens the draw.io editor with CSV data converted to a diagram.
 | `lightbox` | boolean | No | Read-only view mode (default: false) |
 | `dark` | string | No | "auto", "true", or "false" (default: "auto") |
 
-### `open_drawio_mermaid`
+#### `open_drawio_mermaid`
 
 Opens the draw.io editor with a Mermaid.js diagram.
 
@@ -94,178 +114,93 @@ Opens the draw.io editor with a Mermaid.js diagram.
 | `lightbox` | boolean | No | Read-only view mode (default: false) |
 | `dark` | string | No | "auto", "true", or "false" (default: "auto") |
 
-## Example Prompts
+### Example Prompts
 
-Here are example prompts you can use with Claude to create diagrams.
-
-**Important:** Claude Desktop may have multiple ways to create diagrams (artifacts, browser control, MCP tools). To ensure Claude uses the draw.io MCP, explicitly mention the tool name in your prompt.
-
-You can also add a system instruction to your Claude Desktop project:
-> "Always use the draw.io MCP tools (open_drawio_mermaid, open_drawio_csv, open_drawio_xml) to create diagrams. Do not use browser control or artifacts."
-
-### Explicit MCP Tool Calls
-
-These prompts explicitly request the draw.io MCP tools:
-
-**Mermaid:**
-- "Use `open_drawio_mermaid` to create a flowchart for a user login process"
-- "Use the draw.io MCP tool `open_drawio_mermaid` to make a sequence diagram showing OAuth2 flow"
-- "Create a state diagram with `open_drawio_mermaid` for an order lifecycle"
-
-**CSV:**
-- "Use `open_drawio_csv` to create an org chart for our team: CEO -> CTO, CFO; CTO -> 3 Engineers"
-- "Use the draw.io MCP tool `open_drawio_csv` to generate a network topology diagram"
-- "Create a microservices architecture with `open_drawio_csv`"
-
-**XML:**
+- "Use `open_drawio_mermaid` to create a sequence diagram showing OAuth2 authentication flow"
+- "Use `open_drawio_csv` to create an org chart: CEO → CTO, CFO; CTO → 3 Engineers"
 - "Use `open_drawio_xml` to create a detailed AWS architecture diagram with VPC, subnets, and security groups"
-- "Use the draw.io MCP tool `open_drawio_xml` to create a floor plan with 3 offices and a conference room"
-- "Create a network rack diagram with `open_drawio_xml` showing servers, switches, and cabling"
 
-### Mermaid Diagrams
+> **Tip:** Claude Desktop may have multiple ways to create diagrams. To ensure it uses the draw.io MCP, mention the tool name explicitly or add a system instruction:
+> *"Always use the draw.io MCP tools to create diagrams."*
 
-**Flowcharts:**
-- "Create a flowchart showing a user login process with password validation and 2FA"
-- "Make a diagram of a CI/CD pipeline with build, test, and deploy stages"
-- "Draw a decision tree for troubleshooting network connectivity issues"
-
-**Sequence Diagrams:**
-- "Create a sequence diagram showing OAuth2 authentication flow"
-- "Make a sequence diagram of a REST API request/response cycle"
-- "Draw the interaction between a web browser, server, and database for a search query"
-
-**Class Diagrams:**
-- "Create a class diagram for a simple e-commerce system with Product, Order, and Customer classes"
-- "Make a UML class diagram showing inheritance for a vehicle hierarchy"
-
-**Other Mermaid Types:**
-- "Create an entity relationship diagram for a blog with users, posts, and comments"
-- "Make a state diagram for an order lifecycle (pending, confirmed, shipped, delivered)"
-- "Draw a Gantt chart for a 3-month software development project"
-
-### CSV Diagrams
-
-**Org Charts (generated from description):**
-- "Create an org chart for a tech startup with a CEO, CTO with 3 engineers, and CFO with 2 accountants"
-- "Make an organizational diagram for a hospital with departments: Emergency, Surgery, Pediatrics, each with a head doctor and 2 staff"
-- "Generate an org chart showing: John (CEO) manages Sarah (VP Sales) and Mike (VP Engineering). Sarah manages 2 sales reps, Mike manages 3 developers"
-
-**Network/Architecture Diagrams (generated from description):**
-- "Create a network diagram showing: Load Balancer connects to 3 Web Servers, each Web Server connects to a shared Database and Cache"
-- "Make an AWS architecture diagram with: Users -> CloudFront -> ALB -> 2 EC2 instances -> RDS"
-- "Generate a microservices diagram with API Gateway connecting to Auth, Users, Orders, and Payments services"
-
-**Process/Workflow Diagrams (generated from description):**
-- "Create a diagram showing our hiring process: Application -> HR Review -> Technical Interview -> Culture Fit -> Offer -> Onboarding"
-- "Make a diagram of a pizza order flow from customer order through kitchen stations to delivery"
-
-**From Existing Data:**
-- "Create a diagram from this CSV data showing project dependencies"
-- "Turn this spreadsheet of employees and managers into an org chart"
-
-### XML Diagrams
-
-**Complex Custom Diagrams:**
-- "Create a detailed AWS architecture diagram with VPC, subnets, EC2, and RDS"
-- "Make a custom floor plan layout with specific room dimensions"
-- "Draw a circuit diagram with specific component placements"
-
-**Importing Existing Diagrams:**
-- "Open this draw.io XML file and let me edit it"
-- "Load my existing diagram from this URL: https://example.com/diagram.xml"
-
-## Format Examples
-
-### Flowchart with Mermaid
-
-```text
-graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-    C --> E[End]
-    D --> E
-```
-
-### Sequence Diagram with Mermaid
-
-```text
-sequenceDiagram
-    participant User
-    participant Server
-    participant Database
-
-    User->>Server: Login Request
-    Server->>Database: Validate Credentials
-    Database-->>Server: User Data
-    Server-->>User: JWT Token
-```
-
-### Org Chart with CSV
-
-```csv
-## Org Chart
-# label: %name%<br><i style="color:gray;">%title%</i>
-# style: rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;
-# connect: {"from":"manager","to":"name","invert":true,"style":"curved=1;endArrow=blockThin;endFill=1;"}
-# layout: auto
-# nodespacing: 40
-# levelspacing: 60
-name,title,manager
-Alice Johnson,CEO,
-Bob Smith,CTO,Alice Johnson
-Carol Williams,CFO,Alice Johnson
-Dave Brown,Lead Engineer,Bob Smith
-Eve Davis,Senior Engineer,Bob Smith
-Frank Miller,Accountant,Carol Williams
-```
-
-### Entity List with CSV
-
-```csv
-## Entity Diagram
-# label: %name%
-# style: shape=rectangle;rounded=1;whiteSpace=wrap;html=1;
-# connect: {"from":"connects_to","to":"name","style":"endArrow=classic;"}
-# layout: horizontalflow
-name,type,connects_to
-API Gateway,service,Auth Service
-Auth Service,service,User Database
-User Database,database,
-API Gateway,service,Product Service
-Product Service,service,Product Database
-Product Database,database,
-```
-
-### Native XML
-
-```xml
-<mxGraphModel>
-  <root>
-    <mxCell id="0"/>
-    <mxCell id="1" parent="0"/>
-    <mxCell id="2" value="Hello World" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;"
-            vertex="1" parent="1">
-      <mxGeometry x="100" y="100" width="120" height="60" as="geometry"/>
-    </mxCell>
-    <mxCell id="3" value="Another Box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;"
-            vertex="1" parent="1">
-      <mxGeometry x="280" y="100" width="120" height="60" as="geometry"/>
-    </mxCell>
-    <mxCell id="4" style="endArrow=classic;html=1;" edge="1" parent="1" source="2" target="3">
-      <mxGeometry relative="1" as="geometry"/>
-    </mxCell>
-  </root>
-</mxGraphModel>
-```
-
-## How It Works
+### How It Works
 
 1. The MCP server receives diagram content (XML, CSV, or Mermaid)
 2. Content is compressed using pako deflateRaw and encoded as base64
 3. A draw.io URL is generated with the `#create` hash parameter
 4. The URL is returned to the LLM, which can present it to the user
 5. Opening the URL loads draw.io with the diagram ready to view/edit
+
+---
+
+## MCP App Server
+
+The MCP App server renders draw.io diagrams **inline** in AI chat interfaces using the [MCP Apps](https://modelcontextprotocol.io/docs/extensions/apps) protocol. Instead of opening a browser tab, diagrams appear directly in the conversation as interactive iframes.
+
+### How It Works
+
+1. The LLM calls the `create_diagram` tool with draw.io XML
+2. The host fetches the UI resource and renders it in a sandboxed iframe
+3. The diagram is rendered using the official [draw.io viewer](https://viewer.diagrams.net)
+4. The user sees an interactive diagram inline with zoom, pan, and layers support
+
+### Tool: `create_diagram`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `xml` | string | Yes | draw.io XML in mxGraphModel format |
+
+The rendered diagram includes:
+- Interactive zoom, pan, and navigation
+- Layer toggling and lightbox mode
+- "Open in draw.io" button to edit the diagram in the full editor
+- Fullscreen mode
+
+### Installation
+
+```bash
+cd mcp-app-server
+npm install
+```
+
+### Running
+
+Start the HTTP server (for Claude.ai and other web-based hosts):
+
+```bash
+npm start
+```
+
+The server listens on `http://localhost:3001/mcp` by default. Set the `PORT` environment variable to change the port.
+
+### Connecting to Claude.ai
+
+Since Claude.ai needs a public URL, use a tunnel:
+
+```bash
+npx cloudflared tunnel --url http://localhost:3001
+```
+
+Then add the tunnel URL (with `/mcp` appended) as a custom connector in Claude.ai settings.
+
+### Using with Claude Desktop (stdio)
+
+Add to your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "drawio-app": {
+      "command": "node",
+      "args": ["path/to/mcp-app-server/src/index.js", "--stdio"]
+    }
+  }
+}
+```
+
+> **Note:** Inline diagram rendering requires an MCP host that supports the MCP Apps extension. In hosts without MCP Apps support, the tool still works but returns the XML as text.
+
+---
 
 ## Alternative: Project Instructions (No MCP Required)
 
@@ -281,7 +216,7 @@ An alternative approach is available that works **without installing the MCP ser
 ### How to Install
 
 1. Open your Claude Project settings
-2. Add the contents of [`src/claude-project-instructions.txt`](src/claude-project-instructions.txt) to your project instructions
+2. Add the contents of [`claude-project-instructions.txt`](project-instructions/claude-project-instructions.txt) to your project instructions
 3. Ask Claude to create diagrams - it will generate clickable draw.io URLs
 
 ### How It Works
@@ -298,13 +233,19 @@ The generated URL contains compressed base64 data. LLMs are known to silently co
 
 By having the Python script output a complete HTML page with the link already embedded, the URL never passes through Claude's text generation. Claude simply presents the script output as an artifact, ensuring the link is always correct.
 
+---
+
 ## Development
 
 ```bash
-# Install dependencies
+# MCP Tool Server
+cd mcp-tool-server
 npm install
+npm start
 
-# Run the server
+# MCP App Server
+cd mcp-app-server
+npm install
 npm start
 ```
 
@@ -316,3 +257,4 @@ npm start
 - [drawio-mcp on GitHub](https://github.com/jgraph/drawio-mcp) - Source code repository
 - [Mermaid.js Documentation](https://mermaid.js.org/intro/)
 - [MCP Specification](https://modelcontextprotocol.io/)
+- [MCP Apps Extension](https://modelcontextprotocol.io/docs/extensions/apps)

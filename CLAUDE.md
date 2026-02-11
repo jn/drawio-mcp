@@ -2,6 +2,12 @@
 
 This is the official draw.io MCP (Model Context Protocol) server that enables LLMs to open and create diagrams in the draw.io editor.
 
+## Repository Structure
+
+- **`mcp-tool-server/`** - Original MCP tool server (stdio-based, opens browser)
+- **`mcp-app-server/`** - MCP App server (renders diagrams inline in chat via iframe)
+- **`project-instructions/`** - Claude Project instructions (no MCP required)
+
 ## Overview
 
 This MCP server provides tools to create draw.io diagrams from:
@@ -194,6 +200,53 @@ The server generates draw.io URLs using the `#create` hash parameter:
 | Blank diagram | Invalid Mermaid/XML syntax | Check syntax, ensure proper escaping |
 | Diagram doesn't match expected | Mermaid version differences | Simplify syntax, avoid edge cases |
 
+## MCP App Server (`mcp-app-server/`)
+
+The MCP App server renders draw.io diagrams **inline** in AI chat interfaces (Claude, VS Code, etc.) using the MCP Apps protocol. Instead of opening a browser window, diagrams appear directly in the conversation as interactive iframes.
+
+### Tool: `create_diagram`
+
+- **Input**: `{ xml: string }` - draw.io XML in mxGraphModel format
+- **Output**: Interactive diagram rendered via the draw.io viewer library
+- **Features**: Zoom, pan, layers, fullscreen, "Open in draw.io" button
+
+### Architecture
+
+1. LLM calls `create_diagram` with draw.io XML
+2. Host fetches the UI resource (`ui://drawio/mcp-app.html`)
+3. HTML renders the diagram using `viewer-static.min.js` from `https://viewer.diagrams.net`
+4. The SDK's auto-resize reports the diagram dimensions; the host sizes the iframe to match
+5. User sees an interactive diagram inline in the chat
+
+### Development
+
+```bash
+cd mcp-app-server
+npm install
+npm start        # Start the server (no build step needed)
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/index.js` | Server + client logic in one file (vanilla JS, no build step) |
+
+### How the HTML is built
+
+At startup, `src/index.js` reads two bundles from `node_modules`:
+
+- **`app-with-deps.js`** (~319 KB) — MCP Apps SDK browser bundle from `@modelcontextprotocol/ext-apps`. The bundle is ESM (ends with `export { ... as App }`), so the server strips the export statement and creates a local `var App = <minifiedName>` alias. This makes it safe to inline in a plain `<script>` tag inside the sandboxed iframe.
+- **`pako_deflate.min.js`** (~28 KB) — for compressing XML into the `#create=` URL format.
+
+Both are inlined into a self-contained HTML string served via `registerAppResource`. The draw.io viewer (`viewer-static.min.js`) is loaded from CDN at runtime.
+
+### Testing with Claude
+
+1. `npm start`
+2. Tunnel: `npx cloudflared tunnel --url http://localhost:3001`
+3. Add tunnel URL + `/mcp` as custom connector in Claude settings
+
 ## Alternative: Project Instructions (No MCP Required)
 
 An alternative approach is available that works **without installing the MCP server**. Instead of using MCP tools, you add instructions to a Claude Project that teach Claude to generate draw.io URLs using Python code execution.
@@ -207,7 +260,7 @@ An alternative approach is available that works **without installing the MCP ser
 
 ### Installation
 
-Add the contents of [`src/claude-project-instructions.txt`](https://github.com/jgraph/drawio-mcp/blob/main/src/claude-project-instructions.txt) to your Claude Project instructions.
+Add the contents of [`claude-project-instructions.txt`](https://github.com/jgraph/drawio-mcp/blob/main/project-instructions/claude-project-instructions.txt) to your Claude Project instructions.
 
 ### How URL Delivery Works
 

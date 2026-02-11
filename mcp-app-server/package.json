@@ -1,0 +1,24 @@
+{
+  "name": "@drawio/mcp-app",
+  "version": "1.0.0",
+  "description": "Draw.io MCP App server - renders interactive diagrams inline in AI chat interfaces",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "drawio-mcp-app": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "cors": "^2",
+    "express": "^4",
+    "pako": "^2.1.0",
+    "zod": "^3.25.0"
+  }
+}
