@@ -7,5 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 command = "node src/build-html.js"
 
 [[durable_objects.bindings]]
-name = "MCP_SESSION_MANAGER"
+name = "mcp-session-manager"
 class_name = "MCPSessionManager"
+
+# Migrations required for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["MCPSessionManager"]
