@@ -331,6 +331,13 @@ export function createServer(html, serverOptions = {})
             "The draw.io XML content in mxGraphModel format to render as a diagram. Must be well-formed XML: no double hyphens (--) inside comments, no unescaped special characters in attribute values."
           ),
       },
+      annotations:
+      {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
       _meta: { ui: { resourceUri } },
     },
     async function({ xml })

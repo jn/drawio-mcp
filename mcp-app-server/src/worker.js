@@ -135,9 +135,15 @@ export default
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // Only serve /mcp
     const url = new URL(request.url);
 
+    // Serve favicon so Google's favicon service picks up the draw.io logo
+    if (url.pathname === "/favicon.ico")
+    {
+      return Response.redirect("https://draw.io/favicon.ico", 301);
+    }
+
+    // Only serve /mcp
     if (url.pathname !== "/mcp")
     {
       return new Response("Not Found", { status: 404 });
