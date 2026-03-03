@@ -3,7 +3,6 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import cors from "cors";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,8 +32,7 @@ const html = buildHtml(appWithDepsJs, pakoDeflateJs);
 async function startStreamableHTTPServer()
 {
   const port = parseInt(process.env.PORT ?? "3001", 10);
-  const app = createMcpExpressApp({ host: "0.0.0.0" });
-  app.use(cors());
+  const app = createMcpExpressApp();
 
   app.all("/mcp", async function(req, res)
   {

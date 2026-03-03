@@ -18,9 +18,8 @@
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
-    "@modelcontextprotocol/ext-apps": "latest",
-    "@modelcontextprotocol/sdk": "latest",
-    "cors": "^2",
+    "@modelcontextprotocol/ext-apps": "^1.1.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "express": "^4",
     "pako": "^2.1.0",
     "zod": "^3.25.0"
