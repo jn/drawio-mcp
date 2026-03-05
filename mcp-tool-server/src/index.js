@@ -108,7 +108,18 @@ const tools =
       "Opens the draw.io editor with a diagram from XML content. " +
       "Use this to view, edit, or create diagrams in draw.io format. " +
       "The XML should be valid draw.io/mxGraph XML format. " +
-      "IMPORTANT: Do NOT use double hyphens (--) inside XML comments, as this is invalid XML and will break the parser. Use single hyphens or rephrase instead.",
+      "IMPORTANT: Do NOT use double hyphens (--) inside XML comments, as this is invalid XML and will break the parser. Use single hyphens or rephrase instead. " +
+      "EDGE ROUTING: Use edgeStyle=orthogonalEdgeStyle for right-angle connectors. " +
+      "Space nodes at least 60px apart to avoid overlapping edges. " +
+      "Use exitX/exitY/entryX/entryY (0-1) to control which side of a node an edge connects to, spreading connections across different sides. " +
+      "Add explicit waypoints via <Array as=\"points\"><mxPoint x=\"...\" y=\"...\"/></Array> inside mxGeometry when edges would overlap. " +
+      "CONTAINERS: For architecture diagrams and any diagram with nested elements, use proper parent-child containment (set parent=\"containerId\" on children, use relative coordinates). " +
+      "Container types: (1) group style (style=\"group;\") for invisible containers with no connections - includes pointerEvents=0 so child connections are not captured by the container; " +
+      "(2) swimlane style (style=\"swimlane;startSize=30;\") for labeled containers with a title bar - use when the container needs visual borders/headers or when the container itself has connections; " +
+      "(3) any shape can be a container by adding container=1 to its style, but also add pointerEvents=0 unless the container itself needs to be connectable. " +
+      "Always use pointerEvents=0 on container styles that should not capture connections being rewired between children. " +
+      "LAYOUT: Align nodes to a grid (multiples of 10). Use consistent spacing (e.g., 200px horizontal, 120px vertical between nodes). " +
+      "See https://www.drawio.com/doc/faq/drawio-style-reference.html for the complete style reference.",
     inputSchema:
     {
       type: "object",

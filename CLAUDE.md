@@ -83,6 +83,82 @@ Opens the draw.io editor with a Mermaid.js diagram definition.
 4. **Validate syntax**: Ensure Mermaid/CSV/XML syntax is correct before sending
 5. **Return the URL to users**: Always provide the generated URL so users can open the diagram in their browser
 
+## Edge Routing Best Practices
+
+draw.io does **not** have built-in collision detection for edges. You must plan layout and routing carefully:
+
+- Use `edgeStyle=orthogonalEdgeStyle` for right-angle connectors (most common)
+- **Space nodes generously** — at least 60px apart, prefer 200px horizontal / 120px vertical gaps
+- Use `exitX`/`exitY` and `entryX`/`entryY` (values 0–1) to control which side of a node an edge connects to. Spread connections across different sides to prevent overlap
+- Add explicit **waypoints** when edges would overlap:
+  ```xml
+  <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="a" target="b">
+    <mxGeometry relative="1" as="geometry">
+      <Array as="points">
+        <mxPoint x="300" y="150"/>
+        <mxPoint x="300" y="250"/>
+      </Array>
+    </mxGeometry>
+  </mxCell>
+  ```
+- Use `rounded=1` on edges for cleaner bends
+- Use `jettySize=auto` for better port spacing on orthogonal edges
+- Align nodes to a grid (multiples of 10)
+
+## Containers and Groups
+
+For architecture diagrams or any diagram with nested elements, use draw.io's proper parent-child containment — do **not** just place shapes on top of larger shapes.
+
+### How containment works
+
+Set `parent="containerId"` on child cells. Children use **relative coordinates** within the container.
+
+### Container types
+
+| Type | Style | When to use |
+|------|-------|-------------|
+| **Group** (invisible) | `group;` | Container has no connections and needs no visual border. Includes `pointerEvents=0` so child connections are not captured by the container |
+| **Swimlane** (titled) | `swimlane;startSize=30;` | Container needs a visible title bar/header, or the container itself has connections |
+| **Custom container** | `container=1;pointerEvents=0;` added to any shape style | Any shape acting as a container without its own connections |
+
+### Key rules
+
+- **Always add `pointerEvents=0;`** to container styles that should not capture connections being rewired between children. This is critical for usability
+- Only omit `pointerEvents=0` when the container itself needs to be connectable — in that case, use `swimlane` style which handles this correctly (the client area is transparent for mouse events while the header remains connectable)
+- Children must set `parent="containerId"` and use coordinates **relative to the container**
+
+### Example: Architecture container
+
+```xml
+<!-- Swimlane container with title -->
+<mxCell id="svc1" value="User Service" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+  <mxGeometry x="100" y="100" width="300" height="200" as="geometry"/>
+</mxCell>
+<!-- Child inside container (relative coordinates) -->
+<mxCell id="api1" value="REST API" style="rounded=1;whiteSpace=wrap;" vertex="1" parent="svc1">
+  <mxGeometry x="20" y="40" width="120" height="60" as="geometry"/>
+</mxCell>
+<mxCell id="db1" value="Database" style="shape=cylinder3;whiteSpace=wrap;" vertex="1" parent="svc1">
+  <mxGeometry x="160" y="40" width="120" height="60" as="geometry"/>
+</mxCell>
+```
+
+```xml
+<!-- Invisible group container -->
+<mxCell id="grp1" value="" style="group;" vertex="1" parent="1">
+  <mxGeometry x="100" y="100" width="300" height="200" as="geometry"/>
+</mxCell>
+<mxCell id="c1" value="Component A" style="rounded=1;whiteSpace=wrap;" vertex="1" parent="grp1">
+  <mxGeometry x="10" y="10" width="120" height="60" as="geometry"/>
+</mxCell>
+```
+
+## Style Reference
+
+For the complete draw.io style reference including all shape types, edge styles, color palettes, and more, see: https://www.drawio.com/doc/faq/drawio-style-reference.html
+
+For the XML Schema Definition (XSD) for validating `.drawio` files: https://www.drawio.com/assets/mxfile.xsd
+
 ## CRITICAL: XML Well-Formedness
 
 When generating draw.io XML, the output **must** be well-formed XML:
