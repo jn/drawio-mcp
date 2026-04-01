@@ -271,7 +271,7 @@ function generateDrawioEditUrl(xml)
   var encoded = encodeURIComponent(xml);
   var compressed = pako.deflateRaw(encoded);
   var base64 = btoa(Array.from(compressed, function(b) { return String.fromCharCode(b); }).join(""));
-  var createObj = { type: "xml", compressed: true, data: base64 };
+  var createObj = { type: "xml", compressed: true, data: base64, effect: "pop" };
 
   return "https://app.diagrams.net/?pv=0&grid=0#create=" + encodeURIComponent(JSON.stringify(createObj));
 }
