@@ -62,7 +62,8 @@ export function buildHtml(appWithDepsJs, pakoDeflateJs, options)
         min-width: 200px;
       }
       #diagram-container.streaming {
-        height: 400px;
+        min-height: 400px;
+        max-height: 800px;
         overflow: hidden;
         position: relative;
       }
@@ -1021,9 +1022,28 @@ function streamFollowNewCells(graph)
 
   if (cw <= 0 || ch <= 0) return;
 
-  // Scale to fit, clamped to [0.8, 1.0]
+  // Scale to fit, clamped to [0.15, 1.0]
   var targetScale = Math.min((cw - padding * 2) / Math.max(uw, 1), (ch - padding * 2) / Math.max(uh, 1), 1);
-  targetScale = Math.max(targetScale, 0.8);
+  targetScale = Math.max(targetScale, 0.15);
+
+  // Dynamically grow the streaming container to fit the diagram
+  var neededH = Math.ceil(uh * targetScale + padding * 2);
+  var streamH = Math.max(400, Math.min(800, neededH));
+
+  if (ch < streamH)
+  {
+    containerEl.style.height = streamH + 'px';
+    ch = streamH;
+
+    if (app.sendSizeChanged)
+    {
+      app.sendSizeChanged({ width: cw, height: streamH });
+    }
+
+    // Recompute scale with the new container height
+    targetScale = Math.min((cw - padding * 2) / Math.max(uw, 1), (ch - padding * 2) / Math.max(uh, 1), 1);
+    targetScale = Math.max(targetScale, 0.15);
+  }
 
   // Translate to show the "active" part of the diagram:
   // - Horizontally: center the diagram
