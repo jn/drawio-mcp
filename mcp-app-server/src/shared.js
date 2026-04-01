@@ -1290,6 +1290,13 @@ app.ontoolresult = function(result)
 
   endStreaming();
 
+  if (result.isError)
+  {
+    var errorMsg = (textBlock && textBlock.text) ? textBlock.text : "Unknown error";
+    showError("Tool error: " + errorMsg);
+    return;
+  }
+
   if (textBlock && textBlock.type === "text")
   {
     var normalizedXml = normalizeDiagramXml(textBlock.text);
@@ -1303,12 +1310,16 @@ app.ontoolresult = function(result)
     }
     else
     {
-      showError(invalidDiagramXmlMessage);
+      var inputPreview = textBlock.text.substring(0, 200);
+      showError(invalidDiagramXmlMessage + "\\n\\nReceived (first 200 chars): " + inputPreview);
     }
   }
   else
   {
-    showError(invalidDiagramXmlMessage);
+    var blockTypes = result.content
+      ? result.content.map(function(c) { return c.type; }).join(", ")
+      : "none";
+    showError(invalidDiagramXmlMessage + "\\n\\nContent block types: " + blockTypes);
   }
 };
 
@@ -1449,7 +1460,24 @@ export function createServer(html, options = {})
     },
     async function({ xml })
     {
-      var normalizedXml = normalizeDiagramXml(xml) || xml;
+      if (typeof xml !== "string" || xml.trim().length === 0)
+      {
+        return {
+          content: [{ type: "text", text: "Invalid input: expected a non-empty XML string, got " + (xml === null ? "null" : typeof xml) }],
+          isError: true,
+        };
+      }
+
+      var normalizedXml = normalizeDiagramXml(xml);
+
+      if (!normalizedXml)
+      {
+        var preview = xml.length > 200 ? xml.substring(0, 200) + "..." : xml;
+        return {
+          content: [{ type: "text", text: "Could not extract draw.io XML from input. Expected <mxGraphModel> or <mxfile> root element. Received (first 200 chars): " + preview }],
+          isError: true,
+        };
+      }
 
       return {
         content: [{ type: "text", text: normalizedXml }],
