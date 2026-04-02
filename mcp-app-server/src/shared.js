@@ -1507,8 +1507,78 @@ function buildTagMap(shapeIndex)
 }
 
 /**
- * Search the shape index using the same algorithm as draw.io's Sidebar.searchEntries.
- * All search terms must match (AND logic). Supports exact + Soundex matching.
+ * Split a token on camelCase and letter-digit boundaries.
+ * e.g. "pid2misc" → ["pid", "misc"], "pid2inst" → ["pid", "inst"],
+ *      "discInst" → ["disc", "inst"], "hello" → ["hello"]
+ *
+ * @param {string} token - A single query token.
+ * @returns {Array<string>} Sub-tokens (lowercased, length >= 2 only).
+ */
+function splitCompoundToken(token)
+{
+  // Split on: digit-to-letter, letter-to-digit, lowercase-to-uppercase
+  var parts = token.replace(/([a-z])([A-Z])/g, "$1 $2")
+                   .replace(/([a-zA-Z])(\d)/g, "$1 $2")
+                   .replace(/(\d)([a-zA-Z])/g, "$1 $2")
+                   .toLowerCase()
+                   .split(/\s+/);
+
+  return parts.filter(function(p) { return p.length >= 2; });
+}
+
+/**
+ * Collect all shape indices that match a single term (exact + Soundex).
+ * Returns an object with separate exact and phonetic sets.
+ *
+ * @param {Object} tagMap - Pre-built tag→indices map.
+ * @param {string} term - A single search term (lowercase).
+ * @returns {{ exact: Set<number>, phonetic: Set<number> }}
+ */
+function matchTerm(tagMap, term)
+{
+  var exact = new Set();
+  var phonetic = new Set();
+
+  var exactHits = tagMap[term];
+
+  if (exactHits)
+  {
+    exactHits.forEach(function(idx) { exact.add(idx); });
+  }
+
+  var sx = soundex(term.replace(/\.*\d*$/, ""));
+
+  if (sx && sx !== term)
+  {
+    var phoneticHits = tagMap[sx];
+
+    if (phoneticHits)
+    {
+      phoneticHits.forEach(function(idx)
+      {
+        if (!exact.has(idx))
+        {
+          phonetic.add(idx);
+        }
+      });
+    }
+  }
+
+  return { exact: exact, phonetic: phonetic };
+}
+
+/**
+ * Search the shape index with scored ranking and graceful fallback.
+ *
+ * Algorithm:
+ * 1. Normalize query terms (split camelCase/digit boundaries)
+ * 2. Try strict AND across all terms
+ * 3. If AND produces results → score and rank them
+ * 4. If AND produces nothing → fall back to scored OR (best partial matches)
+ *
+ * Scoring counts distinct query terms matched (primary) with a small
+ * bonus for exact over Soundex matches (tiebreaker).
+ * Score per term: +1.0 for exact tag match, +0.5 for Soundex-only match.
  *
  * @param {Array} shapeIndex - The flat shape array.
  * @param {Object} tagMap - Pre-built tag→indices map from buildTagMap().
@@ -1523,75 +1593,173 @@ function searchShapes(shapeIndex, tagMap, query, limit)
     return [];
   }
 
-  var terms = query.toLowerCase().split(/\s+/).filter(function(t) { return t.length > 0; });
+  // Normalize: split compound tokens like "pid2misc" → ["pid", "misc"]
+  var rawTerms = query.toLowerCase().split(/\s+/).filter(function(t) { return t.length > 0; });
+  var terms = [];
+  var seen = {};
+
+  for (var i = 0; i < rawTerms.length; i++)
+  {
+    var subTokens = splitCompoundToken(rawTerms[i]);
+
+    // If splitting produced nothing useful, keep the original if long enough
+    if (subTokens.length === 0 && rawTerms[i].length >= 2)
+    {
+      subTokens = [rawTerms[i]];
+    }
+
+    for (var j = 0; j < subTokens.length; j++)
+    {
+      if (!seen[subTokens[j]])
+      {
+        seen[subTokens[j]] = true;
+        terms.push(subTokens[j]);
+      }
+    }
+  }
 
   if (terms.length === 0)
   {
     return [];
   }
 
-  var resultSet = null;
+  // Collect per-term match sets
+  var termMatches = [];
 
   for (var i = 0; i < terms.length; i++)
   {
-    var term = terms[i];
+    termMatches.push(matchTerm(tagMap, terms[i]));
+  }
 
-    // Collect matches for this term: exact + Soundex
-    var matches = new Set();
-    var exact = tagMap[term];
+  // Try strict AND first
+  var andSet = null;
 
-    if (exact)
+  for (var i = 0; i < termMatches.length; i++)
+  {
+    var combined = new Set();
+
+    termMatches[i].exact.forEach(function(idx) { combined.add(idx); });
+    termMatches[i].phonetic.forEach(function(idx) { combined.add(idx); });
+
+    if (andSet === null)
     {
-      exact.forEach(function(idx) { matches.add(idx); });
-    }
-
-    var sx = soundex(term.replace(/\.*\d*$/, ""));
-
-    if (sx && sx !== term)
-    {
-      var phonetic = tagMap[sx];
-
-      if (phonetic)
-      {
-        phonetic.forEach(function(idx) { matches.add(idx); });
-      }
-    }
-
-    // Intersect with previous terms (AND logic)
-    if (resultSet === null)
-    {
-      resultSet = matches;
+      andSet = combined;
     }
     else
     {
       var intersection = new Set();
 
-      resultSet.forEach(function(idx)
+      andSet.forEach(function(idx)
       {
-        if (matches.has(idx))
+        if (combined.has(idx))
         {
           intersection.add(idx);
         }
       });
 
-      resultSet = intersection;
+      andSet = intersection;
     }
 
-    // Early exit if no matches
-    if (resultSet.size === 0)
+    if (andSet.size === 0)
     {
-      return [];
+      break;
     }
   }
 
-  // Convert indices to shape objects, limited to `limit` results
-  var results = [];
-  var iter = resultSet.values();
-  var next = iter.next();
+  // Score all candidates — either AND results or OR fallback
+  // Per term: +1.0 for exact match, +0.5 for Soundex-only match
+  // Each shape can only score once per term (exact wins over Soundex)
+  var scores = {};
 
-  while (!next.done && results.length < limit)
+  if (andSet && andSet.size > 0)
   {
-    var shape = shapeIndex[next.value];
+    // AND succeeded: score only the AND results
+    andSet.forEach(function(idx)
+    {
+      scores[idx] = 0;
+    });
+
+    for (var i = 0; i < termMatches.length; i++)
+    {
+      // Track which AND candidates got an exact match for this term
+      var exactForTerm = new Set();
+
+      termMatches[i].exact.forEach(function(idx)
+      {
+        if (scores[idx] !== undefined)
+        {
+          scores[idx] += 1.0;
+          exactForTerm.add(idx);
+        }
+      });
+
+      termMatches[i].phonetic.forEach(function(idx)
+      {
+        if (scores[idx] !== undefined && !exactForTerm.has(idx))
+        {
+          scores[idx] += 0.5;
+        }
+      });
+    }
+  }
+  else
+  {
+    // AND failed: fall back to OR — score every shape that matches any term
+    for (var i = 0; i < termMatches.length; i++)
+    {
+      var exactForTerm = new Set();
+
+      termMatches[i].exact.forEach(function(idx)
+      {
+        if (scores[idx] === undefined)
+        {
+          scores[idx] = 0;
+        }
+
+        scores[idx] += 1.0;
+        exactForTerm.add(idx);
+      });
+
+      termMatches[i].phonetic.forEach(function(idx)
+      {
+        if (!exactForTerm.has(idx))
+        {
+          if (scores[idx] === undefined)
+          {
+            scores[idx] = 0;
+          }
+
+          scores[idx] += 0.5;
+        }
+      });
+    }
+  }
+
+  // Sort by score descending, then by title alphabetically
+  var candidates = Object.keys(scores).map(function(idx)
+  {
+    return { idx: parseInt(idx, 10), score: scores[idx] };
+  });
+
+  candidates.sort(function(a, b)
+  {
+    if (b.score !== a.score)
+    {
+      return b.score - a.score;
+    }
+
+    var titleA = shapeIndex[a.idx].title || "";
+    var titleB = shapeIndex[b.idx].title || "";
+
+    return titleA.localeCompare(titleB);
+  });
+
+  // Convert to result objects
+  var results = [];
+
+  for (var i = 0; i < candidates.length && results.length < limit; i++)
+  {
+    var shape = shapeIndex[candidates[i].idx];
 
     results.push({
       style: shape.style,
@@ -1599,8 +1767,6 @@ function searchShapes(shapeIndex, tagMap, query, limit)
       h: shape.h,
       title: shape.title
     });
-
-    next = iter.next();
   }
 
   return results;
