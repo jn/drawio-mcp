@@ -1395,18 +1395,233 @@ export function processAppBundle(raw)
   return raw.slice(0, exportMatch.index) + `\nvar App = ${appEntry.local};\n`;
 }
 
+// ── Shape search ─────────────────────────────────────────────────────────────
+
+/**
+ * Soundex phonetic encoding — matches the implementation in draw.io's Editor.js.
+ * Returns a 4-character code (letter + 3 digits).
+ */
+function soundex(name)
+{
+  if (name == null || name.length === 0)
+  {
+    return "";
+  }
+
+  var s = [];
+  var si = 1;
+  var mappings = "01230120022455012603010202";
+
+  s[0] = name[0].toUpperCase();
+
+  for (var i = 1, l = name.length; i < l; i++)
+  {
+    var c = name[i].toUpperCase().charCodeAt(0) - 65;
+
+    if (c >= 0 && c <= 25)
+    {
+      if (mappings[c] !== "0")
+      {
+        if (mappings[c] !== s[si - 1])
+        {
+          s[si] = mappings[c];
+          si++;
+        }
+
+        if (si > 3)
+        {
+          break;
+        }
+      }
+    }
+  }
+
+  while (si <= 3)
+  {
+    s[si] = "0";
+    si++;
+  }
+
+  return s.join("");
+}
+
+/**
+ * Build a tag-to-entries lookup from the flat shape index array.
+ * Each tag (and its Soundex equivalent) maps to a Set of indices.
+ *
+ * @param {Array} shapeIndex - Array of {style, w, h, title, tags, type}.
+ * @returns {Object} tagMap - { tag: Set<number> }
+ */
+function buildTagMap(shapeIndex)
+{
+  var tagMap = {};
+
+  for (var i = 0; i < shapeIndex.length; i++)
+  {
+    var rawTags = shapeIndex[i].tags;
+
+    if (!rawTags)
+    {
+      continue;
+    }
+
+    var tokens = rawTags.toLowerCase().replace(/[\/,()]/g, " ").split(" ");
+    var seen = {};
+
+    for (var j = 0; j < tokens.length; j++)
+    {
+      var token = tokens[j];
+
+      if (token.length < 2 || seen[token])
+      {
+        continue;
+      }
+
+      seen[token] = true;
+
+      if (!tagMap[token])
+      {
+        tagMap[token] = new Set();
+      }
+
+      tagMap[token].add(i);
+
+      // Also index by Soundex
+      var sx = soundex(token.replace(/\.*\d*$/, ""));
+
+      if (sx && sx !== token && !seen[sx])
+      {
+        seen[sx] = true;
+
+        if (!tagMap[sx])
+        {
+          tagMap[sx] = new Set();
+        }
+
+        tagMap[sx].add(i);
+      }
+    }
+  }
+
+  return tagMap;
+}
+
+/**
+ * Search the shape index using the same algorithm as draw.io's Sidebar.searchEntries.
+ * All search terms must match (AND logic). Supports exact + Soundex matching.
+ *
+ * @param {Array} shapeIndex - The flat shape array.
+ * @param {Object} tagMap - Pre-built tag→indices map from buildTagMap().
+ * @param {string} query - Space-separated search terms.
+ * @param {number} limit - Maximum results to return.
+ * @returns {Array} Matching shapes: [{style, w, h, title}].
+ */
+function searchShapes(shapeIndex, tagMap, query, limit)
+{
+  if (!query || !shapeIndex || shapeIndex.length === 0)
+  {
+    return [];
+  }
+
+  var terms = query.toLowerCase().split(/\s+/).filter(function(t) { return t.length > 0; });
+
+  if (terms.length === 0)
+  {
+    return [];
+  }
+
+  var resultSet = null;
+
+  for (var i = 0; i < terms.length; i++)
+  {
+    var term = terms[i];
+
+    // Collect matches for this term: exact + Soundex
+    var matches = new Set();
+    var exact = tagMap[term];
+
+    if (exact)
+    {
+      exact.forEach(function(idx) { matches.add(idx); });
+    }
+
+    var sx = soundex(term.replace(/\.*\d*$/, ""));
+
+    if (sx && sx !== term)
+    {
+      var phonetic = tagMap[sx];
+
+      if (phonetic)
+      {
+        phonetic.forEach(function(idx) { matches.add(idx); });
+      }
+    }
+
+    // Intersect with previous terms (AND logic)
+    if (resultSet === null)
+    {
+      resultSet = matches;
+    }
+    else
+    {
+      var intersection = new Set();
+
+      resultSet.forEach(function(idx)
+      {
+        if (matches.has(idx))
+        {
+          intersection.add(idx);
+        }
+      });
+
+      resultSet = intersection;
+    }
+
+    // Early exit if no matches
+    if (resultSet.size === 0)
+    {
+      return [];
+    }
+  }
+
+  // Convert indices to shape objects, limited to `limit` results
+  var results = [];
+  var iter = resultSet.values();
+  var next = iter.next();
+
+  while (!next.done && results.length < limit)
+  {
+    var shape = shapeIndex[next.value];
+
+    results.push({
+      style: shape.style,
+      w: shape.w,
+      h: shape.h,
+      title: shape.title
+    });
+
+    next = iter.next();
+  }
+
+  return results;
+}
+
+// ── Server ───────────────────────────────────────────────────────────────────
+
 /**
  * Create a new MCP server instance with the create_diagram tool + UI resource.
  *
  * @param {string} html - The pre-built, self-contained HTML string.
  * @param {object} [options] - Options.
  * @param {string} [options.domain] - Widget domain for ChatGPT sandbox rendering (e.g. "https://mcp.draw.io").
+ * @param {string} [options.xmlReference] - XML generation reference text for the tool description.
+ * @param {Array} [options.shapeIndex] - Shape search index array from search-index.json.
  * @param {object} [options.serverOptions] - Optional McpServer constructor options (e.g. jsonSchemaValidator).
  * @returns {McpServer}
  */
 export function createServer(html, options = {})
 {
-  const { domain, xmlReference = "", serverOptions = {} } = typeof options === "object" && options !== null
+  const { domain, xmlReference = "", shapeIndex = null, serverOptions = {} } = typeof options === "object" && options !== null
     ? options
     : { serverOptions: options };
   const server = new McpServer(
@@ -1473,6 +1688,70 @@ export function createServer(html, options = {})
       };
     }
   );
+
+  // ── search_shapes tool (only registered when shapeIndex is provided) ───────
+
+  if (shapeIndex && shapeIndex.length > 0)
+  {
+    var tagMap = buildTagMap(shapeIndex);
+
+    registerAppTool(
+      server,
+      "search_shapes",
+      {
+        title: "Search Shapes",
+        description:
+          "Search the draw.io shape library by keywords. Returns matching shapes with " +
+          "their exact style strings, dimensions, and titles. Use this to find the correct " +
+          "style for domain-specific shapes (e.g. AWS, Azure, GCP, P&ID, electrical, " +
+          "network, Cisco, Kubernetes, UML, BPMN, floorplan, mockup) before generating " +
+          "XML with the create_diagram tool. The style string from the results can be " +
+          "used directly in mxCell style attributes.",
+        inputSchema:
+        {
+          query: z
+            .string()
+            .describe(
+              "Space-separated search keywords (e.g. 'pid globe valve', 'aws lambda', 'cisco router', 'kubernetes pod')"
+            ),
+          limit: z
+            .number()
+            .optional()
+            .describe(
+              "Maximum number of results to return (default: 10, max: 50)"
+            ),
+        },
+        annotations:
+        {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+        _meta:
+        {
+          "openai/toolInvocation/invoking": "Searching shapes...",
+          "openai/toolInvocation/invoked": "Shape search complete.",
+        },
+      },
+      async function({ query, limit })
+      {
+        var maxLimit = Math.min(limit || 10, 50);
+        var results = searchShapes(shapeIndex, tagMap, query, maxLimit);
+
+        if (results.length === 0)
+        {
+          return {
+            content: [{ type: "text", text: "No shapes found for query: " + query }],
+          };
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+        };
+      }
+    );
+  }
 
   registerAppResource(
     server,

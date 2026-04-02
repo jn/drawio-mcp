@@ -62,6 +62,16 @@ const xmlReference = fs.readFileSync(
   "utf-8"
 );
 
+// Read the shape search index (optional — skip if not yet generated)
+const shapeIndexPath = path.join(__dirname, "..", "..", "shape-search", "search-index.json");
+var shapeIndex = null;
+
+if (fs.existsSync(shapeIndexPath))
+{
+  shapeIndex = JSON.parse(fs.readFileSync(shapeIndexPath, "utf-8"));
+  console.log("Shape index: " + shapeIndex.length + " shapes");
+}
+
 // Pre-build the HTML once
 const html = buildHtml(appWithDepsJs, pakoDeflateJs, { viewerJs });
 
@@ -113,7 +123,7 @@ async function startStreamableHTTPServer()
       return origEnd(chunk);
     };
 
-    const server = createServer(html, { domain: process.env.DOMAIN, xmlReference });
+    const server = createServer(html, { domain: process.env.DOMAIN, xmlReference, shapeIndex });
 
     const transport = new StreamableHTTPServerTransport(
     {
@@ -165,7 +175,7 @@ async function startStreamableHTTPServer()
 
 async function startStdioServer()
 {
-  await createServer(html, { domain: process.env.DOMAIN, xmlReference }).connect(new StdioServerTransport());
+  await createServer(html, { domain: process.env.DOMAIN, xmlReference, shapeIndex }).connect(new StdioServerTransport());
 }
 
 async function main()

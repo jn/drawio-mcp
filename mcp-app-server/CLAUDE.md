@@ -73,6 +73,10 @@ The Worker uses **4 sharded Durable Objects** (`MCPSessionManager`) to manage al
 
 The tool description for `create_diagram` is loaded at startup from `shared/xml-reference.md` (single source of truth for all prompts). The `xmlReference` string is passed to `createServer()` via options. For the Cloudflare Worker, it is pre-built into `generated-html.js` by `build-html.js`.
 
+## Shape Search Index
+
+The `search_shapes` tool uses a pre-built index from `shape-search/search-index.json` (~10,000 shapes). The index is embedded in `generated-html.js` at build time (adds ~4 MB to the Worker bundle). The search runs in-process — no external HTTP calls. The tag lookup map is built once per session when `createServer()` is called. If the index file is missing, `search_shapes` is silently not registered.
+
 ## Coding Conventions
 
 - **Allman brace style**: Opening braces go on their own line for all control structures, functions, objects, and callbacks.

@@ -9,6 +9,7 @@ The official draw.io MCP (Model Context Protocol) server that enables LLMs to op
 - **`mcp-tool-server/`** — Original MCP tool server (stdio-based, opens browser). Published as `@drawio/mcp` on npm.
 - **`project-instructions/`** — Claude Project instructions (no MCP required, no install).
 - **`skill-cli/`** — Claude Code skill (generates native `.drawio` files, opens in desktop app). No MCP required.
+- **`shape-search/`** — Shape search index generator. Loads draw.io's `app.min.js` via jsdom to extract all shape styles and tags into `search-index.json`, which powers the `search_shapes` MCP tool. Re-run after updating `drawio-dev` to pick up new or changed shapes.
 
 Each subdirectory has its own `CLAUDE.md` with implementation details.
 
@@ -19,6 +20,14 @@ Each subdirectory has its own `CLAUDE.md` with implementation details.
 - **Input**: `{ xml: string }` - draw.io XML in mxGraphModel format
 - **Output**: Interactive diagram rendered inline via the draw.io viewer library
 - **Features**: Zoom, pan, layers, fullscreen, "Open in draw.io" button
+
+### `search_shapes`
+
+- **Input**: `{ query: string, limit?: number }` - Search keywords and optional max results (default: 10, max: 50)
+- **Output**: Array of matching shapes with `{style, w, h, title}` — style strings can be used directly in mxCell attributes
+- **Search**: AND logic across space-separated terms, exact + Soundex phonetic matching
+- **Coverage**: ~10,000+ shapes across all draw.io libraries (AWS, Azure, GCP, P&ID, electrical, Cisco, Kubernetes, UML, BPMN, etc.)
+- **Use case**: Call before `create_diagram` to find correct style strings for domain-specific shapes
 
 ## MCP Tool Server Tools
 
