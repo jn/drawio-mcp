@@ -1026,10 +1026,10 @@ function streamFollowNewCells(graph)
 
   if (cw <= 0 || ch <= 0) return;
 
-  // Scale to fit width, clamped to [0.6, 1.0]
+  // Scale to fit width, clamped to [0.1, 1.0]
   var fitScaleW = (cw - padding * 2) / Math.max(uw, 1);
   var targetScale = Math.min(fitScaleW, 1);
-  targetScale = Math.max(targetScale, 0.6);
+  targetScale = Math.max(targetScale, 0.1);
 
   // Dynamically grow the streaming container to fit the diagram at this scale
   var neededH = Math.ceil(uh * targetScale + padding * 2);

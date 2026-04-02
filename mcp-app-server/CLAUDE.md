@@ -44,7 +44,7 @@ The Worker uses **4 sharded Durable Objects** (`MCPSessionManager`) to manage al
 - Routing: `parseInt(sessionId.charAt(0), 16) % 4` determines the shard
 - New sessions (no session ID) go to a random shard; the DO generates a UUID whose first hex char routes back to that shard
 - Each DO maintains a `Map` of session IDs to server/transport instances
-- Sessions are kept alive for **30 minutes** of inactivity, then cleaned up (runs every 60 seconds)
+- Sessions are kept alive for **5 minutes** of inactivity, then cleaned up (runs every 60 seconds)
 
 **Why sharded DOs?**
 - Durable Objects charge per request + per GB-seconds of active memory
@@ -117,7 +117,7 @@ Debug logging is **off by default**. Enable via `wrangler secret put DEBUG` (set
 - **Server works end-to-end via curl** — all 6 MCP protocol steps succeed (initialize → notifications/initialized → tools/list → resources/list → resources/read → tools/call)
 - **Claude.ai never sends `resources/read` or `tools/call`** — completes the handshake (through `resources/subscribe`) but stops. This is a Claude.ai-side issue, not a server bug
 - **MCP Apps for custom connectors** may not be fully supported on Claude.ai yet. Contact `mcp-apps@anthropic.com` for status
-- **"Session not found" (404)** — returned when clients resume stale session IDs after cleanup (4-minute idle timeout) or after deploys. Clients should re-initialize with a fresh session
+- **"Session not found" (404)** — returned when clients resume stale session IDs after cleanup (5-minute idle timeout) or after deploys. Clients should re-initialize with a fresh session
 - **SSE stream conflicts** (`409 Conflict: Only one SSE stream`) are benign — clients reconnecting SSE on sessions that already have an active stream
 
 ## Scripts
