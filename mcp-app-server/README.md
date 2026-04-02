@@ -123,10 +123,14 @@ src/
   shared.js          Shared logic: buildHtml(), processAppBundle(), createServer()
   index.js           Node.js entry (Express + stdio transports)
   worker.js          Cloudflare Workers entry (Web Standard fetch handler)
-  build-html.js      Build script: generates generated-html.js
-  generated-html.js  (gitignored) Pre-built HTML string for the Worker
+  build-html.js      Build script: generates generated-html.js + xml reference
+  generated-html.js  (gitignored) Pre-built HTML string + XML reference for the Worker
 wrangler.toml        Wrangler configuration
+../shared/
+  xml-reference.md   Shared XML generation reference (single source of truth)
 ```
+
+The `create_diagram` tool description is loaded from `shared/xml-reference.md` at startup (Node.js) or pre-built into `generated-html.js` at deploy time (Workers). This file is the single source of truth for XML generation guidance across all four approaches in the repository.
 
 ### How the HTML is built
 

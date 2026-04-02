@@ -55,6 +55,13 @@ if (process.env.VIEWER_PATH)
   }
 }
 
+// Read the shared XML reference once at startup (single source of truth)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const xmlReference = fs.readFileSync(
+  path.join(__dirname, "..", "..", "shared", "xml-reference.md"),
+  "utf-8"
+);
+
 // Pre-build the HTML once
 const html = buildHtml(appWithDepsJs, pakoDeflateJs, { viewerJs });
 
@@ -106,7 +113,7 @@ async function startStreamableHTTPServer()
       return origEnd(chunk);
     };
 
-    const server = createServer(html, { domain: process.env.DOMAIN });
+    const server = createServer(html, { domain: process.env.DOMAIN, xmlReference });
 
     const transport = new StreamableHTTPServerTransport(
     {
@@ -158,7 +165,7 @@ async function startStreamableHTTPServer()
 
 async function startStdioServer()
 {
-  await createServer(html, { domain: process.env.DOMAIN }).connect(new StdioServerTransport());
+  await createServer(html, { domain: process.env.DOMAIN, xmlReference }).connect(new StdioServerTransport());
 }
 
 async function main()
