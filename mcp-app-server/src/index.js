@@ -29,6 +29,7 @@ const pakoDeflateJs = fs.readFileSync(
 // containing it plus GraphViewer.js). Example:
 //   VIEWER_PATH=../drawio-dev/src/main/webapp/js npm start
 var viewerJs = null;
+var viewerUrl = process.env.VIEWER_URL || null;
 
 if (process.env.VIEWER_PATH)
 {
@@ -73,7 +74,7 @@ if (fs.existsSync(shapeIndexPath))
 }
 
 // Pre-build the HTML once
-const html = buildHtml(appWithDepsJs, pakoDeflateJs, { viewerJs });
+const html = buildHtml(appWithDepsJs, pakoDeflateJs, { viewerJs, viewerUrl });
 
 // --- Transport setup ---
 

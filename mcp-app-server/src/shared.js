@@ -16,11 +16,23 @@ import { normalizeDiagramXml, INVALID_DIAGRAM_XML_MESSAGE } from "./normalize-di
  * @param {string} pakoDeflateJs - The pako deflate browser bundle.
  * @param {object} [options] - Optional configuration.
  * @param {string} [options.viewerJs] - If provided, inlines this JS instead of loading viewer-static.min.js from CDN.
+ * @param {string} [options.viewerUrl] - If provided, loads viewer-static.min.js from this URL instead of the default CDN URL.
  * @returns {string} Self-contained HTML string.
  */
 export function buildHtml(appWithDepsJs, pakoDeflateJs, options)
 {
   var viewerJs = (options && options.viewerJs) || null;
+  var viewerUrl = (options && options.viewerUrl) || "https://viewer.diagrams.net/js/viewer-static.min.js";
+  var viewerOrigin = "https://viewer.diagrams.net";
+
+  try
+  {
+    viewerOrigin = new URL(viewerUrl).origin;
+  }
+  catch (e)
+  {
+    viewerUrl = "https://viewer.diagrams.net/js/viewer-static.min.js";
+  }
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -118,7 +130,7 @@ export function buildHtml(appWithDepsJs, pakoDeflateJs, options)
     <!-- draw.io viewer -->
     ${viewerJs
       ? '<script>' + viewerJs + '<\/script>'
-      : '<script src="https://viewer.diagrams.net/js/viewer-static.min.js" async><\/script>'
+      : '<script src="${viewerUrl}" async><\/script>'
     }
 
     <!-- pako deflate (inlined, for #create URL generation) -->
@@ -2106,8 +2118,8 @@ export function createServer(html, options = {})
                 ...(domain ? { domain } : {}),
                 csp:
                 {
-                  resourceDomains: ["https://viewer.diagrams.net"],
-                  connectDomains: ["https://viewer.diagrams.net"],
+                  resourceDomains: [${JSON.stringify(viewerOrigin)}],
+                  connectDomains: [${JSON.stringify(viewerOrigin)}],
                 },
               },
             },
