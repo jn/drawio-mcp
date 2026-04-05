@@ -2118,8 +2118,8 @@ export function createServer(html, options = {})
                 ...(domain ? { domain } : {}),
                 csp:
                 {
-                  resourceDomains: [${JSON.stringify(viewerOrigin)}],
-                  connectDomains: [${JSON.stringify(viewerOrigin)}],
+                  resourceDomains: [viewerOrigin],
+                  connectDomains: [viewerOrigin],
                 },
               },
             },
